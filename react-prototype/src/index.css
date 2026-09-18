@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+
+  --animate-pop: pop 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  --animate-shake: shake 350ms ease-in-out;
+  --animate-slide-in: slide-in 350ms ease-out;
+  --animate-banner: banner 1100ms ease-out forwards;
+
+  @keyframes pop {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-6px); }
+    40% { transform: translateX(6px); }
+    60% { transform: translateX(-4px); }
+    80% { transform: translateX(4px); }
+  }
+  @keyframes slide-in {
+    from { transform: translateX(24px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+  }
+  @keyframes banner {
+    0% { opacity: 0; transform: scale(0.9); }
+    15% { opacity: 1; transform: scale(1); }
+    70% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.04); }
+  }
+}
+
+body {
+  background: #16131f;
+  color: #f4f1ff;
+}
+
+/*
+ * Chunky pressable button. The 3D edge is a box-shadow, not a border, and the
+ * press is a transform — neither affects layout, so pressing never shifts the page.
+ * Set --edge to the darker shade of the button colour.
+ */
+@utility press-3d {
+  --edge-h: 4px;
+  box-shadow: 0 var(--edge-h) 0 0 var(--edge), 0 10px 20px -8px rgb(0 0 0 / 0.5);
+  transition: transform 60ms ease-out, box-shadow 60ms ease-out, background-color 150ms;
+  &:active {
+    transform: translateY(calc(var(--edge-h) - 1px));
+    box-shadow: 0 1px 0 0 var(--edge), 0 4px 10px -8px rgb(0 0 0 / 0.5);
+  }
+}
