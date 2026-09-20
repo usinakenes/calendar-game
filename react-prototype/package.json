@@ -9,7 +9,8 @@
     "typecheck": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
-    "gen-report": "tsx scripts/gen-report.ts"
+    "gen-report": "tsx scripts/gen-report.ts",
+    "harness": "tsx scripts/harness.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

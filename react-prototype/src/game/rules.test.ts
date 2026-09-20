@@ -1,10 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { GameState } from './types';
-import { advanceDay, clampStart, moveBlock, placeCard, removeBlock } from './rules';
+import { blank } from './test-helpers';
+import { advanceDay, clampStart, moveBlock, placeCard, removeBlock, setSleep } from './rules';
 
-function blank(): GameState {
-  return { version: 1, seed: 0, today: 0, blocks: [], nextId: 1 };
-}
 
 describe('placement', () => {
   it('places a card with its fixed length', () => {
@@ -46,5 +43,24 @@ describe('placement', () => {
   it('snaps starts into the day', () => {
     expect(clampStart(12, 3)).toBe(11);
     expect(clampStart(-1, 2)).toBe(0);
+  });
+});
+
+describe('sleep', () => {
+  it('sleeping past 8h eats the morning, and is refused if the morning is booked', () => {
+    const r = setSleep(blank(), 1, 10);
+    if (!r.ok) throw new Error();
+    expect(r.state.blocks).toMatchObject([{ cardId: 'sleep_in', day: 1, start: 0, length: 2 }]);
+    expect(placeCard(r.state, 'study_light', 1, 1).ok).toBe(false);
+    const back = setSleep(r.state, 1, 7);
+    expect(back.ok && back.state.blocks).toEqual([]);
+
+    const booked = placeCard(blank(), 'study_light', 1, 0);
+    if (!booked.ok) throw new Error();
+    expect(setSleep(booked.state, 1, 9).ok).toBe(false);
+  });
+
+  it('last night is locked', () => {
+    expect(setSleep(blank(), 0, 9).ok).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 /** Placement validity and grid mutations. Pure: every function returns a new state. */
 import type { Block, GameState } from './types';
-import { HORIZON_DAYS, HOURS_PER_DAY, TERM_DAYS } from './constants';
+import { HORIZON_DAYS, HOURS_PER_DAY, SLEEP_DEFAULT, SLEEP_MAX, SLEEP_MIN, TERM_DAYS } from './constants';
 import { cardDef } from './cards';
 import { isFree } from './grid';
 
@@ -22,8 +22,41 @@ export function clampStart(start: number, length: number): number {
   return Math.max(0, Math.min(start, HOURS_PER_DAY - length));
 }
 
+/** The morning hours eaten by sleeping past 08:00. Resized via setSleep, never dragged. */
+export function isSleepBlock(block: Block): boolean {
+  return block.cardId === 'sleep_in';
+}
+
 export function canMove(state: GameState, block: Block): boolean {
-  return (block.source === 'activity' || block.source === 'offer') && isPlannableDay(state, block.day);
+  return (
+    (block.source === 'activity' || block.source === 'offer') && !isSleepBlock(block) && isPlannableDay(state, block.day)
+  );
+}
+
+/** Tonight's sleep is editable while the morning it leads into is still plannable. */
+export function canSetSleep(state: GameState, day: number): boolean {
+  return isPlannableDay(state, day);
+}
+
+/**
+ * Set the sleep for the night before `day`. Hours beyond 8 become a
+ * "Sleeping in" block from 08:00 — it can't overlap anything.
+ */
+export function setSleep(state: GameState, day: number, hours: number): Result {
+  if (!canSetSleep(state, day)) return { ok: false, reason: 'That night is already locked' };
+  if (hours < SLEEP_MIN || hours > SLEEP_MAX) return { ok: false, reason: `Sleep must be ${SLEEP_MIN}–${SLEEP_MAX}h` };
+  const id = `s${day}`;
+  const overslept = hours - SLEEP_DEFAULT;
+  if (overslept > 0 && !isFree(state.blocks, day, 0, overslept, id)) {
+    return { ok: false, reason: 'Something is already scheduled that morning' };
+  }
+  const blocks = state.blocks.filter((b) => b.id !== id);
+  if (overslept > 0) {
+    blocks.push({ id, cardId: 'sleep_in', day, start: 0, length: overslept, source: 'activity' });
+  }
+  const sleep = state.sleep.slice();
+  sleep[day] = hours;
+  return { ok: true, state: { ...state, blocks, sleep } };
 }
 
 /** null if the placement is valid, otherwise the reason. */
@@ -42,7 +75,7 @@ export function placementError(
 
 export function placeCard(state: GameState, cardId: string, day: number, start: number): Result {
   const def = cardDef(cardId);
-  if (def.supply === 'fixed' || def.supply === 'debt') return { ok: false, reason: 'Not a playable card' };
+  if (def.supply !== 'activity' && def.supply !== 'offer') return { ok: false, reason: 'Not a playable card' };
   const err = placementError(state, def.blocks, day, start);
   if (err) return { ok: false, reason: err };
   const block: Block = {
@@ -79,7 +112,7 @@ export function isTermOver(state: GameState): boolean {
   return state.today >= TERM_DAYS - 1;
 }
 
-/** M0: just slides the window. Resolution arrives in M1. */
+/** Slides the window. Use resolveDay to play the day out first. */
 export function advanceDay(state: GameState): GameState {
   if (isTermOver(state)) return state;
   return { ...state, today: state.today + 1 };

@@ -220,6 +220,21 @@ block dropped into next week.)
 This removes both dominant strategies (fill every gap with shifts; fill every gap with socialising)
 without a single arbitrary cap, and it means a run where nobody invites you anywhere is a hard run.
 
+### Offers arrive at the end of the day (decided, not yet built — M3)
+
+Offers are not a tray. After a day resolves, the evening's invitations arrive as accept/decline
+prompts with the day and hours already fixed ("Dinner with Sam, Thu 18:00–20:00").
+
+- **Accept** → the card goes straight onto the calendar, locked.
+- **Busy with something fixed or locked** → can't accept; the offer is lost.
+- **Busy with your own fluid plans** → accepting bumps them off. "Gym or dinner?" is the
+  agonising decision the game is built for.
+- **Decline** → a small stat cost (e.g. popularity for social offers), and more importantly,
+  people who keep getting declined stop asking: offer rate drops.
+- Notice period is the difficulty dial: early term offers land 3–7 days out, late term tomorrow.
+
+The hand then holds only activities.
+
 ### Card lengths
 
 Fixed per card type, **not player-chosen** — except sleep. A free length dial gets solved once and
@@ -353,8 +368,8 @@ the ending flavour text. No meta-progression, no unlocks, no second year in the 
   never a colour — colour is already fully loaded.
 - Blocks show their own duration ("Study · 3h"), because 3h ≠ 3×1h and that must be legible
   without hovering.
-- Two trays: **Activities** (no counts, unlimited) and **Offers** (counts and dates). The absence
-  of a count on the left is the UI answering "how many times can I study?" before it's asked.
+- The hand holds **Activities** only (no counts, unlimited) — the absence of a count answers "how
+  many times can I study?" before it's asked. Offers arrive as end-of-day prompts (see Supply).
 - 98 cells is a lot of small drop targets. Generous snapping, and **click-card-then-click-slot as
   a full alternative to dragging** — some people hate drag.
 - Radar charts for traits were considered and dropped once relics replaced numbers as the visible
@@ -488,3 +503,15 @@ Keeping the port mechanical:
 - All randomness goes through the seeded `rng.ts`. Given a seed, the generator and (later)
   `resolveDay` are deterministic, so React outputs can be saved as golden fixtures and the Godot
   port checked against them. (GDScript ints are 64-bit: mask to 32 bits when porting mulberry32.)
+
+## Implementation notes (decisions made while building)
+
+- **Sleep (M1).** `sleep[d]` is the night before day d. 8h wakes you at 08:00; each hour past 8
+  becomes a "Sleeping in" block from 08:00 (refused if the morning is booked — an 08:00 lecture
+  means you can't sleep in). Morning energy = `energyCap × sleepRestore(hours)`. Sleeping < 8h
+  currently has no upside; it needs a reason (e.g. a night out that runs past midnight caps sleep).
+- **Trait rates.** The doc's "good study block ≈ +2" maxes a trait in ~4 weeks. The harness
+  settled on ~0.1/hour for focused study, ~0.05/hour for lectures (idle run ends INT ≈ 35,
+  all-study ≈ 96 before M2's staleness). All numbers live in `src/game/data/cards.json`.
+- **Chores** has no effect yet — it needs a job (M4 debt?) or should be cut.
+- **Balance harness:** `npm run harness -- [runs]` in `react-prototype/`.

@@ -12,3 +12,8 @@ export const FIXED_DENSITY_MIN = 30;
 export const FIXED_DENSITY_MAX = 39;
 
 export const WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+export const SLEEP_MIN = 4;
+export const SLEEP_MAX = 10;
+/** Sleeping this long wakes you at 08:00. Each extra hour eats a morning block. */
+export const SLEEP_DEFAULT = 8;

@@ -6,6 +6,7 @@ import { CARD_ICON, CATEGORY_TILE } from './theme';
 import type { Held } from './interaction';
 
 interface Props {
+  disabled?: boolean;
   selectedCardId: string | null;
   hint: ReactNode;
   onSelect: (def: CardDef) => void;
@@ -57,9 +58,11 @@ function Group({ title, note, cards, selectedCardId, onSelect }: {
 }
 
 /** The hand. Activities have no counts — they're unlimited. */
-export function CardDock({ selectedCardId, hint, onSelect }: Props) {
+export function CardDock({ disabled, selectedCardId, hint, onSelect }: Props) {
   return (
-    <footer className="shrink-0 border-t border-white/10 bg-[#1d1a2b]">
+    <footer
+      className={`shrink-0 border-t border-white/10 bg-[#1d1a2b] transition-opacity ${disabled ? 'pointer-events-none opacity-50' : ''}`}
+    >
       <div className="px-4 pt-1.5 text-xs text-white/50">{hint}</div>
       <div className="flex gap-6 overflow-x-auto px-4 pt-3 pb-3">
         <Group

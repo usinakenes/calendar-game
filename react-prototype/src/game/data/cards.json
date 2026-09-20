@@ -1,24 +1,26 @@
 [
-  { "id": "lecture",       "name": "Lecture",         "category": "fixed",  "blocks": 2, "supply": "fixed",    "lock": "fixed" },
-  { "id": "tutorial",      "name": "Tutorial",        "category": "fixed",  "blocks": 1, "supply": "fixed",    "lock": "fixed" },
-  { "id": "lab",           "name": "Lab",             "category": "fixed",  "blocks": 3, "supply": "fixed",    "lock": "fixed" },
-  { "id": "exam",          "name": "Exam",            "category": "fixed",  "blocks": 3, "supply": "fixed",    "lock": "fixed" },
-  { "id": "appointment",   "name": "Appointment",     "category": "fixed",  "blocks": 1, "supply": "fixed",    "lock": "fixed" },
-  { "id": "club_meeting",  "name": "Club meeting",    "category": "fixed",  "blocks": 2, "supply": "fixed",    "lock": "fixed" },
-  { "id": "family_visit",  "name": "Family visit",    "category": "fixed",  "blocks": 3, "supply": "fixed",    "lock": "fixed" },
+  { "id": "lecture",       "name": "Lecture",       "category": "fixed",  "blocks": 2, "supply": "fixed",    "lock": "fixed", "energy": 6,  "yields": { "intelligence": 0.05 } },
+  { "id": "tutorial",      "name": "Tutorial",      "category": "fixed",  "blocks": 1, "supply": "fixed",    "lock": "fixed", "energy": 6,  "yields": { "intelligence": 0.08 } },
+  { "id": "lab",           "name": "Lab",           "category": "fixed",  "blocks": 3, "supply": "fixed",    "lock": "fixed", "energy": 7,  "yields": { "intelligence": 0.06 } },
+  { "id": "exam",          "name": "Exam",          "category": "fixed",  "blocks": 3, "supply": "fixed",    "lock": "fixed", "energy": 10 },
+  { "id": "appointment",   "name": "Appointment",   "category": "fixed",  "blocks": 1, "supply": "fixed",    "lock": "fixed", "energy": 3 },
+  { "id": "club_meeting",  "name": "Club meeting",  "category": "fixed",  "blocks": 2, "supply": "fixed",    "lock": "fixed", "energy": 4,  "yields": { "popularity": 0.08 } },
+  { "id": "family_visit",  "name": "Family visit",  "category": "fixed",  "blocks": 3, "supply": "fixed",    "lock": "fixed", "energy": 3,  "yields": { "popularity": 0.03 } },
 
-  { "id": "study_light",   "name": "Light study",     "category": "study",  "blocks": 1, "supply": "activity", "lock": "fluid" },
-  { "id": "study_focused", "name": "Focused study",   "category": "study",  "blocks": 3, "supply": "activity", "lock": "fluid" },
-  { "id": "cram",          "name": "Cram",            "category": "study",  "blocks": 5, "supply": "activity", "lock": "fluid" },
-  { "id": "gym",           "name": "Gym",             "category": "health", "blocks": 2, "supply": "activity", "lock": "fluid" },
-  { "id": "rest",          "name": "Rest",            "category": "health", "blocks": 1, "supply": "activity", "lock": "fluid" },
-  { "id": "chores",        "name": "Chores",          "category": "life",   "blocks": 2, "supply": "activity", "lock": "fluid" },
+  { "id": "study_light",   "name": "Light study",   "category": "study",  "blocks": 1, "supply": "activity", "lock": "fluid", "energy": 7,  "yields": { "intelligence": 0.07 } },
+  { "id": "study_focused", "name": "Focused study", "category": "study",  "blocks": 3, "supply": "activity", "lock": "fluid", "energy": 8,  "yields": { "intelligence": 0.1 } },
+  { "id": "cram",          "name": "Cram",          "category": "study",  "blocks": 5, "supply": "activity", "lock": "fluid", "energy": 10, "yields": { "intelligence": 0.09 } },
+  { "id": "gym",           "name": "Gym",           "category": "health", "blocks": 2, "supply": "activity", "lock": "fluid", "energy": 12, "physical": true, "yields": { "physicality": 0.15 } },
+  { "id": "rest",          "name": "Rest",          "category": "health", "blocks": 1, "supply": "activity", "lock": "fluid", "energy": -8 },
+  { "id": "chores",        "name": "Chores",        "category": "life",   "blocks": 2, "supply": "activity", "lock": "fluid", "energy": 5 },
 
-  { "id": "shift",         "name": "Work shift",      "category": "work",   "blocks": 4, "supply": "offer",    "lock": "onPlacement" },
-  { "id": "short_shift",   "name": "Short shift",     "category": "work",   "blocks": 2, "supply": "offer",    "lock": "onPlacement" },
-  { "id": "coffee",        "name": "Coffee",          "category": "social", "blocks": 1, "supply": "offer",    "lock": "onPlacement" },
-  { "id": "dinner",        "name": "Dinner",          "category": "social", "blocks": 2, "supply": "offer",    "lock": "onPlacement" },
-  { "id": "night_out",     "name": "Night out",       "category": "social", "blocks": 4, "supply": "offer",    "lock": "onPlacement" },
+  { "id": "shift",         "name": "Work shift",    "category": "work",   "blocks": 4, "supply": "offer",    "lock": "onPlacement", "energy": 8, "money": 220 },
+  { "id": "short_shift",   "name": "Short shift",   "category": "work",   "blocks": 2, "supply": "offer",    "lock": "onPlacement", "energy": 8, "money": 110 },
+  { "id": "coffee",        "name": "Coffee",        "category": "social", "blocks": 1, "supply": "offer",    "lock": "onPlacement", "energy": 3, "money": -8,   "yields": { "popularity": 0.1 } },
+  { "id": "dinner",        "name": "Dinner",        "category": "social", "blocks": 2, "supply": "offer",    "lock": "onPlacement", "energy": 4, "money": -45,  "yields": { "popularity": 0.12 } },
+  { "id": "night_out",     "name": "Night out",     "category": "social", "blocks": 4, "supply": "offer",    "lock": "onPlacement", "energy": 7, "money": -340, "yields": { "popularity": 0.12 } },
 
-  { "id": "catch_up",      "name": "Catch-up",        "category": "debt",   "blocks": 2, "supply": "debt",     "lock": "fixed" }
+  { "id": "catch_up",      "name": "Catch-up",      "category": "debt",   "blocks": 2, "supply": "debt",     "lock": "fixed", "energy": 7,  "yields": { "intelligence": 0.05 } },
+
+  { "id": "sleep_in",      "name": "Sleeping in",   "category": "sleep", "blocks": 1, "supply": "sleep",    "lock": "fluid", "energy": 0 }
 ]

@@ -1,4 +1,4 @@
-import type { Category } from '../game/types';
+import type { Category, Trait } from '../game/types';
 
 /** Colour encodes category only. Locks are an icon, never a colour. */
 export const CATEGORY_TILE: Record<Category, string> = {
@@ -9,6 +9,7 @@ export const CATEGORY_TILE: Record<Category, string> = {
   life: 'bg-violet-400 border-violet-700 text-violet-950',
   fixed: 'bg-slate-500 border-slate-700 text-slate-50',
   debt: 'bg-red-500 border-red-800 text-red-50',
+  sleep: 'bg-indigo-400/70 border-indigo-700 text-indigo-950',
 };
 
 /** Presentation only — Godot will use its own art. */
@@ -32,6 +33,19 @@ export const CARD_ICON: Record<string, string> = {
   dinner: '🍝',
   night_out: '🪩',
   catch_up: '⏳',
+  sleep_in: '😴',
 };
 
 export const WEEKDAY_FULL = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+export const TRAIT_ICON: Record<Trait, string> = {
+  intelligence: '🧠',
+  physicality: '💪',
+  popularity: '⭐',
+};
+
+export const TRAIT_SHORT: Record<Trait, string> = {
+  intelligence: 'INT',
+  physicality: 'PHY',
+  popularity: 'POP',
+};

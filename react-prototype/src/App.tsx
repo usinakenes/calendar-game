@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -10,13 +10,13 @@ import {
   type DragOverEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import type { Block, CardDef, GameState } from './game/types';
+import type { Block, CardDef, GameState, Stats } from './game/types';
+import { TRAITS } from './game/types';
 import { DAYS_PER_WEEK, HOURS_PER_DAY, TERM_DAYS, TERM_WEEKS } from './game/constants';
 import { cardDef } from './game/cards';
 import { gapsForDay, occupancy } from './game/grid';
 import { newRun } from './game/state';
 import {
-  advanceDay,
   clampStart,
   horizonDays,
   isTermOver,
@@ -24,12 +24,16 @@ import {
   placeCard,
   placementError,
   removeBlock,
+  setSleep,
   type Result,
 } from './game/rules';
+import { resolveDay, simulateDay, type DayResult } from './game/resolve';
+import { morningEnergy } from './game/yields';
 import { Calendar, HEADER_H, LABEL_W, type Preview } from './ui/Calendar';
+import { StatBar } from './ui/StatBar';
 import { CardDock } from './ui/CardDock';
 import { BlockFace } from './ui/BlockFace';
-import { WEEKDAY_FULL } from './ui/theme';
+import { TRAIT_ICON, WEEKDAY_FULL } from './ui/theme';
 import type { Cell, Held } from './ui/interaction';
 import { loadOrNew, randomSeed, save } from './ui/storage';
 
@@ -48,6 +52,32 @@ function previewFor(state: GameState, held: Held, cell: Cell): Preview {
     name: cardDef(heldCardId(state, held)).name,
     error: placementError(state, held.length, cell.day, start, ignore),
   };
+}
+
+/** Stats as they stand after `hour` of a resolving day. */
+function statsAt(start: Stats, result: DayResult, hour: number): Stats {
+  if (hour < 0) return start;
+  const done = result.hours.slice(0, hour + 1);
+  const out: Stats = {
+    ...start,
+    energy: done[done.length - 1].energyAfter,
+    money: start.money + done.reduce((n, h) => n + h.money, 0),
+  };
+  for (const t of TRAITS) out[t] = Math.min(100, start[t] + done.reduce((n, h) => n + h.gains[t], 0));
+  return out;
+}
+
+function summarize(result: DayResult): string {
+  const parts = TRAITS.filter((t) => result.totals[t] >= 0.005).map((t) => `+${result.totals[t].toFixed(2)} ${TRAIT_ICON[t]}`);
+  if (result.totals.money) parts.push(`${result.totals.money > 0 ? '+' : '−'}${Math.abs(result.totals.money)} 💰`);
+  const empty = result.events.some((e) => e.kind === 'outOfEnergy');
+  return (parts.join('  ') || 'Nothing gained') + (empty ? '  · ran out of energy' : '');
+}
+
+interface PlaybackState {
+  result: DayResult;
+  next: GameState;
+  hour: number;
 }
 
 function TermProgress({ today }: { today: number }) {
@@ -72,7 +102,8 @@ export default function App() {
   const [dragging, setDragging] = useState<Held | null>(null);
   const [pointerCell, setPointerCell] = useState<Cell | null>(null);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
-  const [banner, setBanner] = useState<{ id: number; title: string; sub: string } | null>(null);
+  const [banner, setBanner] = useState<{ id: number; title: string; sub: string; summary: string } | null>(null);
+  const [playback, setPlayback] = useState<PlaybackState | null>(null);
   const [showGaps, setShowGaps] = useState(true);
   const [cellSize, setCellSize] = useState({ w: 120, h: 32 });
   const gridRef = useRef<HTMLDivElement>(null);
@@ -89,6 +120,43 @@ export default function App() {
 
   const held = dragging ?? selected;
   const preview = held && pointerCell ? previewFor(state, held, pointerCell) : null;
+
+  // Energy projections for each visible day — including the card you're holding, so
+  // you can see what a placement does to the tank before committing to it.
+  const projections = useMemo(() => {
+    let projected = state;
+    if (held && preview && !preview.error) {
+      const r =
+        held.kind === 'card'
+          ? placeCard(state, held.cardId, preview.day, preview.start)
+          : moveBlock(state, held.blockId, preview.day, preview.start);
+      if (r.ok) projected = r.state;
+    }
+    const out: Record<number, DayResult> = {};
+    for (const d of horizonDays(projected)) {
+      const stats =
+        d === projected.today ? projected.stats : { ...projected.stats, energy: morningEnergy(projected.stats, projected.sleep[d]) };
+      out[d] = simulateDay(stats, projected.blocks, d);
+    }
+    return out;
+  }, [state, held, preview?.day, preview?.start, preview?.error]);
+
+  // Step the now-line. Uneventful hours fly by; running out of energy stops it.
+  useEffect(() => {
+    if (!playback) return;
+    const { result, hour } = playback;
+    if (hour >= HOURS_PER_DAY - 1) {
+      const t = setTimeout(() => finishPlayback(playback), 450);
+      return () => clearTimeout(t);
+    }
+    const at = result.events.filter((e) => e.hour === hour);
+    const delay =
+      hour < 0 ? 150 : at.some((e) => e.kind === 'outOfEnergy') ? 1000 : at.some((e) => e.kind === 'blockEnd') ? 170 : 60;
+    const t = setTimeout(() => setPlayback((p) => p && { ...p, hour: p.hour + 1 }), delay);
+    return () => clearTimeout(t);
+  }, [playback]);
+
+  const shownStats = playback ? statsAt(state.stats, playback.result, playback.hour) : state.stats;
 
   function flash(text: string) {
     setToast({ id: Date.now(), text });
@@ -114,20 +182,30 @@ export default function App() {
   }
 
   function advance() {
-    if (isTermOver(state)) return;
+    if (isTermOver(state) || playback) return;
     clearHeld();
-    const next = advanceDay(state);
-    setState(next);
+    const { state: next, result } = resolveDay(state);
+    setPlayback({ result, next, hour: -1 });
+  }
+
+  function finishPlayback(p: PlaybackState) {
+    setPlayback(null);
+    setState(p.next);
     setBanner({
       id: Date.now(),
-      title: WEEKDAY_FULL[next.today % DAYS_PER_WEEK],
-      sub: `Week ${Math.floor(next.today / DAYS_PER_WEEK) + 1} · Day ${next.today + 1}`,
+      title: WEEKDAY_FULL[p.next.today % DAYS_PER_WEEK],
+      sub: `Week ${Math.floor(p.next.today / DAYS_PER_WEEK) + 1} · Day ${p.next.today + 1}`,
+      summary: summarize(p.result),
     });
   }
 
   // Esc drops what you're holding, Delete removes a selected block, Enter ends the day.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
+      if (playback) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape') finishPlayback(playback);
+        return;
+      }
       if (e.key === 'Escape') clearHeld();
       if ((e.key === 'Delete' || e.key === 'Backspace') && selected?.kind === 'block') {
         apply(removeBlock(state, selected.blockId));
@@ -231,6 +309,8 @@ export default function App() {
             <TermProgress today={state.today} />
           </div>
 
+          <StatBar stats={shownStats} />
+
           <div className="ml-auto flex items-center gap-3 rounded-lg bg-white/5 px-2.5 py-1 text-[11px] font-bold text-white/40">
             <span title="Fixed events in the visible horizon">
               fixed {fixedCells}/{days.length * HOURS_PER_DAY} ({Math.round((fixedCells / (days.length * HOURS_PER_DAY)) * 100)}%)
@@ -248,9 +328,9 @@ export default function App() {
           <button
             className="press-3d rounded-xl bg-yellow-300 px-5 py-2 font-black text-[#1d1a2b] [--edge:#ca8a04] hover:bg-yellow-200 disabled:pointer-events-none disabled:opacity-40"
             onClick={advance}
-            disabled={termOver}
+            disabled={termOver || playback !== null}
           >
-            {termOver ? 'Term over' : 'End day ▶'}
+            {termOver ? 'Term over' : playback ? 'Living it…' : 'End day ▶'}
           </button>
         </header>
 
@@ -261,6 +341,8 @@ export default function App() {
             clickMode={selected !== null}
             preview={preview}
             showGaps={showGaps}
+            projections={projections}
+            playback={playback && { result: playback.result, hour: playback.hour }}
             gridRef={gridRef}
             onCellEnter={(cell) => {
               if (selected && (pointerCell?.day !== cell.day || pointerCell?.hour !== cell.hour)) setPointerCell(cell);
@@ -268,7 +350,17 @@ export default function App() {
             onCellClick={onCellClick}
             onBlockClick={selectBlock}
             onBlockRemove={(b) => apply(removeBlock(state, b.id))}
+            onSleep={(day, hours) => apply(setSleep(state, day, hours))}
           />
+
+          {/* While the day plays out the board is read-only; a click skips ahead. */}
+          {playback && (
+            <div
+              className="absolute inset-0 z-[60] cursor-pointer"
+              title="Click to skip"
+              onClick={() => finishPlayback(playback)}
+            />
+          )}
 
           {banner && (
             <div
@@ -279,6 +371,8 @@ export default function App() {
               <div className="rounded-2xl bg-[#16131f]/85 px-10 py-5 text-center shadow-2xl ring-1 ring-yellow-300/30">
                 <div className="text-4xl font-black tracking-wide text-yellow-300">{banner.title}</div>
                 <div className="mt-1 text-sm font-bold text-white/60">{banner.sub}</div>
+                <div className="mt-3 text-xs font-bold text-white/45">Yesterday</div>
+                <div className="text-sm font-black text-yellow-100">{banner.summary}</div>
               </div>
             </div>
           )}
@@ -292,7 +386,9 @@ export default function App() {
           )}
         </main>
 
-        <CardDock selectedCardId={selected?.kind === 'card' ? selected.cardId : null} hint={hint} onSelect={selectCard} />
+        <CardDock
+          disabled={playback !== null}
+          selectedCardId={selected?.kind === 'card' ? selected.cardId : null} hint={hint} onSelect={selectCard} />
       </div>
 
       <DragOverlay dropAnimation={null}>
